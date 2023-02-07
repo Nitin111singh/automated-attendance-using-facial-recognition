@@ -10,6 +10,8 @@ import joblib
 from flask_mysqldb import MySQL
 import yaml
 from flask_mail import Mail, Message
+import openpyxl
+import csv
 
 #### Defining Flask App
 app = Flask(__name__)
@@ -31,6 +33,7 @@ mail = Mail(app)
 #### Saving Date today in 2 different formats
 datetoday = date.today().strftime("%m_%d_%y")
 datetoday2 = date.today().strftime("%d-%B-%Y")
+datesql=date.today().strftime("%y-%m-%d")
 
 
 #### Initializing VideoCapture object to access WebCam
@@ -132,6 +135,7 @@ def start():
            if identified_person is not None:
               add_attendance(identified_person)
               cv2.putText(frame,f'{identified_person}',(30,30),cv2.FONT_HERSHEY_SIMPLEX,1,(255, 0, 20),2,cv2.LINE_AA)
+
            else:
               cv2.putText(frame,f'Unknown',(30,30),cv2.FONT_HERSHEY_SIMPLEX,1,(255, 0, 20),2,cv2.LINE_AA)
 
@@ -227,6 +231,19 @@ def viewatt():
     cur.execute("USE users")
     cur.execute("select * from user")
     records=cur.fetchall()
+                      #database
+    # Open the Excel file
+    with open(f'Attendance/Attendance-{datetoday}.csv', 'r') as file:
+        reader = csv.reader(file)
+        next(reader)  # skip the header row
+        for row in reader:
+        # If the id is found, insert the id, date, and 1 as the present value into the attendance table
+           cur = mysql.connection.cursor()
+           cur.execute("USE users")
+           sql = "INSERT INTO attendance values(%s,%s,%s)"
+           cur.execute(sql, (row[1], datesql, 1))
+           mysql.connection.commit()
+           cur.close()
 
     print("\nPrinting each row")
     for row in records:

@@ -1,18 +1,63 @@
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>ID</th>
-            <th>Email</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for row in records %}
-        <tr>
-            <td>{{ row[0] }}</td>
-            <td>{{ row[1] }}</td>
-            <td>{{ row[2] }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<html>
+
+<head>
+    <style>
+      body {
+    background-image:url('https://mcdn.wallpapersafari.com/medium/55/76/UbH49I.jpg');
+    background-size: cover;
+    background-position: center;
+}
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 30px;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        th,
+        td {
+            border: 1px solid #000000;
+            color: rgb(255, 255, 255);
+            padding: 10px;
+        }
+
+        th {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        td {
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+        tr:nth-child(even) {
+        background-color: #4c4c4c;
+    }
+    </style>
+</head>
+
+<body>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>ID</th>
+                <th>Email</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in records %}
+            <tr>
+                <td>{{ row[0] }}</td>
+                <td>{{ row[1] }}</td>
+                <td>{{ row[2] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+
+</html>
