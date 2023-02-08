@@ -10,7 +10,6 @@ import joblib
 from flask_mysqldb import MySQL
 import yaml
 from flask_mail import Mail, Message
-import openpyxl
 import csv
 
 #### Defining Flask App
@@ -251,8 +250,15 @@ def viewatt():
         print("id=", row[1])
         print("email=", row[2],"\n")
 
+    cur=mysql.connection.cursor()
+    cur.execute("USE users")
+    cur.execute("select * from user where id not in (select id from attendance where day=%s)", (datesql,))
+    records=cur.fetchall()
+    cur.execute("select * from user where id in (select id from attendance where day=%s)", (datesql,))
+    presentees=cur.fetchall()
 
-    return render_template('viewattendance.html', records=records)
+
+    return render_template('viewattendance.html', records=records,presentees=presentees)
 
 
 #### Our main function which runs the Flask App

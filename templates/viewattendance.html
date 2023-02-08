@@ -46,6 +46,7 @@
                 <th>Name</th>
                 <th>ID</th>
                 <th>Email</th>
+                <th>Present</th>
             </tr>
         </thead>
         <tbody>
@@ -54,6 +55,15 @@
                 <td>{{ row[0] }}</td>
                 <td>{{ row[1] }}</td>
                 <td>{{ row[2] }}</td>
+                <td>No</td>
+            </tr>
+            {% endfor %}
+            {% for row in presentees %}
+            <tr>
+                <td>{{ row[0] }}</td>
+                <td>{{ row[1] }}</td>
+                <td>{{ row[2] }}</td>
+                <td>YES</td>
             </tr>
             {% endfor %}
         </tbody>
