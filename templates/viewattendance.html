@@ -1,6 +1,15 @@
 <html>
 
 <head>
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <ul class=flashes>
+        {% for message in messages %}
+        <li>{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% endwith %}
     <style>
       body {
     background-image:url('https://mcdn.wallpapersafari.com/medium/55/76/UbH49I.jpg');
@@ -66,8 +75,13 @@
                 <td>YES</td>
             </tr>
             {% endfor %}
+           
         </tbody>
+        
     </table>
+<form action="/sendmail" method="post">
+    <input type="submit" value="Send Email"
+        style="background-color: green; color: white; padding: 15px; font-size: 20px; position: fixed;  left: 50%; transform: translate(-50%, 0);">
+</form>
 </body>
-
 </html>

@@ -8,12 +8,33 @@ from sklearn.neighbors import KNeighborsClassifier
 import pandas as pd
 import joblib
 from flask_mysqldb import MySQL
-import yaml
 from flask_mail import Mail, Message
 import csv
+from flask import flash
+from flask import Flask, redirect, url_for, render_template, request, session
+import sqlite3
+
+def register_user_to_db(username, password):
+    con = sqlite3.connect('database.db')
+    cur = con.cursor()
+    cur.execute('INSERT INTO users(username,password) values (?,?)', (username, password))
+    con.commit()
+    con.close()
+
+def check_user(username, password):
+    con = sqlite3.connect('database.db')
+    cur = con.cursor()
+    cur.execute('Select username,password FROM users WHERE username=? and password=?', (username, password))
+
+    result = cur.fetchone()
+    if result:
+       return True
+    else:
+        return False
 
 #### Defining Flask App
 app = Flask(__name__)
+app.secret_key = "r@nd0mSk_1"
 app.config['MYSQL_DATABASE_USER'] = 'root'
 app.config['MYSQL_DATABASE_PASSWORD'] = ''
 app.config['MYSQL_DATABASE_DB'] = 'users'
@@ -87,6 +108,10 @@ def train_model():
 
 #### Extract info from today's attendance file in attendance folder
 def extract_attendance():
+    file_path = f'Attendance/Attendance-{datetoday}.csv'
+    if not os.path.exists(file_path):
+        df = pd.DataFrame(columns=['Name', 'Roll', 'Time'])
+        df.to_csv(file_path, index=False)
     df = pd.read_csv(f'Attendance/Attendance-{datetoday}.csv')
     names = df['Name']
     rolls = df['Roll']
@@ -110,12 +135,52 @@ def add_attendance(name):
 ################## ROUTING FUNCTIONS #########################
 
 #### Our main page
+
 @app.route('/')
+def index():
+    return render_template('login.html')
+
+@app.route('/register', methods=["POST", "GET"])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        register_user_to_db(username, password)
+        return redirect(url_for('index'))
+
+    else:
+        return render_template('register.html')
+
+
+@app.route('/login', methods=["POST", "GET"])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        print(check_user(username, password))
+        if check_user(username, password):
+            session['username'] = username
+            return redirect(url_for('home'))
+        else:
+            return redirect(url_for('login'))
+    else:
+        return redirect(url_for('index'))
+    
+@app.route('/home', methods=['POST', "GET"])
 def home():
-    names,rolls,times,l = extract_attendance()    
-    return render_template('home.html',names=names,rolls=rolls,times=times,l=l,totalreg=totalreg(),datetoday2=datetoday2) 
+    if 'username' in session:
+        names,rolls,times,l = extract_attendance()    
+        return render_template('home1.html',names=names,rolls=rolls,times=times,l=l,totalreg=totalreg(),datetoday2=datetoday2) 
 
-
+    else:
+        return "Username or Password is wrong!"
+    
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
+ 
 #### This function will run when we click on Take Attendance Button
 @app.route('/start',methods=['GET'])
 def start():
@@ -144,7 +209,7 @@ def start():
     cap.release()
     cv2.destroyAllWindows()
     names,rolls,times,l = extract_attendance()    
-    return render_template('home.html',names=names,rolls=rolls,times=times,l=l,totalreg=totalreg(),datetoday2=datetoday2) 
+    return render_template('home1.html',names=names,rolls=rolls,times=times,l=l,totalreg=totalreg(),datetoday2=datetoday2) 
 
 @app.route('/addd',methods=['GET','POST'])
 def addd():
@@ -205,7 +270,7 @@ def database():
 def sendmail():
     cur=mysql.connection.cursor()
     cur.execute("USE users")
-    cur.execute("select * from user")
+    cur.execute("select * from user where id not in (select id from attendance where day=%s)", (datesql,))
     records=cur.fetchall()
     # for row in records:
     #     print(row)
@@ -218,10 +283,11 @@ def sendmail():
        
     for row in records:
         msg = Message("hii",sender='nitinsingh.cs20@rvce.edu.in',recipients=[row[2]])
-        msg.body="hi!! you're absent today"
+        msg.body="aur bhai kya hal hai"
         mail.send(msg)
         cur.close() 
-    return 'email sent'
+    return "email sent success"
+    return render_template('viewattendance.html')
 
 @app.route('/viewattendance',methods=['GET','POST'])
 
@@ -230,20 +296,6 @@ def viewatt():
     cur.execute("USE users")
     cur.execute("select * from user")
     records=cur.fetchall()
-                      #database
-    # Open the Excel file
-    with open(f'Attendance/Attendance-{datetoday}.csv', 'r') as file:
-        reader = csv.reader(file)
-        next(reader)  # skip the header row
-        for row in reader:
-        # If the id is found, insert the id, date, and 1 as the present value into the attendance table
-           cur = mysql.connection.cursor()
-           cur.execute("USE users")
-           sql = "INSERT INTO attendance values(%s,%s,%s)"
-           cur.execute(sql, (row[1], datesql, 1))
-           mysql.connection.commit()
-           cur.close()
-
     print("\nPrinting each row")
     for row in records:
         print("name=", row[0], )
@@ -260,6 +312,23 @@ def viewatt():
 
     return render_template('viewattendance.html', records=records,presentees=presentees)
 
+@app.route('/saveattendance',methods=['GET','POST'])
+def saveatt():
+     #database
+    # Open the csv  file
+    with open(f'Attendance/Attendance-{datetoday}.csv', 'r') as file:
+        reader = csv.reader(file)
+        next(reader)  # skip the header row
+        for row in reader:
+        # If the id is found, insert the id, date, and 1 as the present value into the attendance table
+           cur = mysql.connection.cursor()
+           cur.execute("USE users")
+           sql = "INSERT INTO attendance values(%s,%s,%s)"
+           cur.execute(sql, (row[1], datesql, 1))
+           mysql.connection.commit()
+           cur.close()
+    return "data added successfully"
+    
 
 #### Our main function which runs the Flask App
 if __name__ == '__main__':
