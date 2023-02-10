@@ -15,16 +15,19 @@ from flask import Flask, redirect, url_for, render_template, request, session
 import sqlite3
 
 def register_user_to_db(username, password):
-    con = sqlite3.connect('database.db')
-    cur = con.cursor()
-    cur.execute('INSERT INTO users(username,password) values (?,?)', (username, password))
-    con.commit()
-    con.close()
+
+    cur=mysql.connection.cursor()
+    cur.execute("USE users")
+    sql="INSERT INTO staff(s_name,pass) values (%s,%s)"
+    cur.execute(sql, (username,password))
+    mysql.connection.commit()
+    cur.close() 
 
 def check_user(username, password):
-    con = sqlite3.connect('database.db')
-    cur = con.cursor()
-    cur.execute('Select username,password FROM users WHERE username=? and password=?', (username, password))
+    cur=mysql.connection.cursor()
+    cur.execute("USE users")
+    sql="Select s_name,pass FROM staff WHERE s_name=%s and pass=%s"
+    cur.execute(sql, (username, password))
 
     result = cur.fetchone()
     if result:
@@ -44,13 +47,13 @@ mysql=MySQL(app)
 app.config['MAIL_SERVER']='smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USERNAME'] = 'nitinsingh.cs20@rvce.edu.in'
-app.config['MAIL_PASSWORD'] = 'Nitin@8899865679'
+app.config['MAIL_PASSWORD'] = 'asdadasd'
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
 
 mail = Mail(app)
 
-#### Saving Date today in 2 different formats
+#### Saving Date today in 3 different formats
 datetoday = date.today().strftime("%m_%d_%y")
 datetoday2 = date.today().strftime("%d-%B-%Y")
 datesql=date.today().strftime("%y-%m-%d")
@@ -108,28 +111,43 @@ def train_model():
 
 #### Extract info from today's attendance file in attendance folder
 def extract_attendance():
-    file_path = f'Attendance/Attendance-{datetoday}.csv'
+    value = session.get('username')
+     
+
+    file_path = f'Attendance/Attendance-{datetoday}{value}.csv'
     if not os.path.exists(file_path):
-        df = pd.DataFrame(columns=['Name', 'Roll', 'Time'])
+        df = pd.DataFrame(columns=['Name', 'Roll', 'Time','cname'])
         df.to_csv(file_path, index=False)
-    df = pd.read_csv(f'Attendance/Attendance-{datetoday}.csv')
+    df = pd.read_csv(f'Attendance/Attendance-{datetoday}{value}.csv')
     names = df['Name']
     rolls = df['Roll']
     times = df['Time']
+    cname=df['cname']
     l = len(df)
-    return names,rolls,times,l
+    return names,rolls,times,cname,l
 
 
 #### Add Attendance of a specific user
 def add_attendance(name):
+    #database query to fetch the course name from given logged in session's user name
+    value=session.get('username')
+    cur=mysql.connection.cursor()
+    cur.execute("USE users")
+    sql="select cname from course where s_name=(%s)"
+    cur.execute(sql,(value,))
+    result = cur.fetchall()
+    result = result[0][0]
+    print(result)
+    cur.close()
     username = name.split('_')[0]
     userid = name.split('_')[1]
     current_time = datetime.now().strftime("%H:%M:%S")
     
-    df = pd.read_csv(f'Attendance/Attendance-{datetoday}.csv')
+    
+    df = pd.read_csv(f'Attendance/Attendance-{datetoday}{value}.csv')
     if int(userid) not in list(df['Roll']):
-        with open(f'Attendance/Attendance-{datetoday}.csv','a') as f:
-            f.write(f'\n{username},{userid},{current_time}')
+        with open(f'Attendance/Attendance-{datetoday}{value}.csv','a') as f:
+            f.write(f'\n{username},{userid},{current_time},{result}')
 
 
 ################## ROUTING FUNCTIONS #########################
@@ -170,8 +188,8 @@ def login():
 @app.route('/home', methods=['POST', "GET"])
 def home():
     if 'username' in session:
-        names,rolls,times,l = extract_attendance()    
-        return render_template('home1.html',names=names,rolls=rolls,times=times,l=l,totalreg=totalreg(),datetoday2=datetoday2) 
+        names,rolls,times,cname,l = extract_attendance()    
+        return render_template('home1.html',names=names,rolls=rolls,times=times,l=l,cname=cname,totalreg=totalreg(),username=session['username'],datetoday2=datetoday2) 
 
     else:
         return "Username or Password is wrong!"
@@ -184,32 +202,35 @@ def logout():
 #### This function will run when we click on Take Attendance Button
 @app.route('/start',methods=['GET'])
 def start():
-    if 'face_recognition_model.pkl' not in os.listdir('static'):
-        return render_template('home.html',totalreg=totalreg(),datetoday2=datetoday2,mess='There is no trained model in the static folder. Please add a new face to continue.') 
-
-    cap = cv2.VideoCapture(0)
-    ret = True
-    while ret:
-        ret,frame = cap.read()
-        if extract_faces(frame)!=():
-           (x,y,w,h) = extract_faces(frame)[0]
-           cv2.rectangle(frame,(x, y), (x+w, y+h), (255, 0, 20), 2)
-           face = cv2.resize(frame[y:y+h,x:x+w], (50, 50))
-           identified_person = identify_face(face.reshape(1,-1))[0]
-           if identified_person is not None:
-              add_attendance(identified_person)
-              cv2.putText(frame,f'{identified_person}',(30,30),cv2.FONT_HERSHEY_SIMPLEX,1,(255, 0, 20),2,cv2.LINE_AA)
-
-           else:
-              cv2.putText(frame,f'Unknown',(30,30),cv2.FONT_HERSHEY_SIMPLEX,1,(255, 0, 20),2,cv2.LINE_AA)
-
-        cv2.imshow('Attendance',frame)
-        if cv2.waitKey(1)==27:
-            break
-    cap.release()
-    cv2.destroyAllWindows()
-    names,rolls,times,l = extract_attendance()    
-    return render_template('home1.html',names=names,rolls=rolls,times=times,l=l,totalreg=totalreg(),datetoday2=datetoday2) 
+    if 'username' in session:
+       if 'face_recognition_model.pkl' not in os.listdir('static'):
+           return render_template('home.html',totalreg=totalreg(),datetoday2=datetoday2,mess='There is no trained model in the static folder. Please add a new face to continue.') 
+   
+       cap = cv2.VideoCapture(0)
+       ret = True
+       while ret:
+           ret,frame = cap.read()
+           if extract_faces(frame)!=():
+              (x,y,w,h) = extract_faces(frame)[0]
+              cv2.rectangle(frame,(x, y), (x+w, y+h), (255, 0, 20), 2)
+              face = cv2.resize(frame[y:y+h,x:x+w], (50, 50))
+              identified_person = identify_face(face.reshape(1,-1))[0]
+              if identified_person is not None:
+                 add_attendance(identified_person)
+                 cv2.putText(frame,f'{identified_person}',(30,30),cv2.FONT_HERSHEY_SIMPLEX,1,(255, 0, 20),2,cv2.LINE_AA)
+   
+              else:
+                 cv2.putText(frame,f'Unknown',(30,30),cv2.FONT_HERSHEY_SIMPLEX,1,(255, 0, 20),2,cv2.LINE_AA)
+   
+           cv2.imshow('Attendance',frame)
+           if cv2.waitKey(1)==27:
+               break
+       cap.release()
+       cv2.destroyAllWindows()
+       names,rolls,times,cname,l = extract_attendance()    
+       return render_template('home1.html',names=names,rolls=rolls,times=times,l=l,cname=cname,totalreg=totalreg(),datetoday2=datetoday2)
+    else:
+        return "login first" 
 
 @app.route('/addd',methods=['GET','POST'])
 def addd():
@@ -296,17 +317,27 @@ def viewatt():
     cur.execute("USE users")
     cur.execute("select * from user")
     records=cur.fetchall()
+
     print("\nPrinting each row")
     for row in records:
         print("name=", row[0], )
         print("id=", row[1])
         print("email=", row[2],"\n")
+    
+    #database query to fetch the course name from given logged in session's user name
+    value=session.get('username')
+    cur=mysql.connection.cursor()
+    cur.execute("USE users")
+    sql="select cname from course where s_name=(%s)"
+    cur.execute(sql,(value,))
+    result = cur.fetchall()
+    result = result[0][0]
 
     cur=mysql.connection.cursor()
     cur.execute("USE users")
-    cur.execute("select * from user where id not in (select id from attendance where day=%s)", (datesql,))
+    cur.execute("select * from user where id not in (select id from attendance where day=%s and cname=%s)", (datesql,result))
     records=cur.fetchall()
-    cur.execute("select * from user where id in (select id from attendance where day=%s)", (datesql,))
+    cur.execute("select * from user where id in (select id from attendance where day=%s and cname=%s)", (datesql,result))
     presentees=cur.fetchall()
 
 
@@ -316,15 +347,18 @@ def viewatt():
 def saveatt():
      #database
     # Open the csv  file
-    with open(f'Attendance/Attendance-{datetoday}.csv', 'r') as file:
+    value=session.get('username')
+    print(value)
+    with open(f'Attendance/Attendance-{datetoday}{value}.csv', 'r') as file:
         reader = csv.reader(file)
         next(reader)  # skip the header row
+        next(reader)
         for row in reader:
         # If the id is found, insert the id, date, and 1 as the present value into the attendance table
            cur = mysql.connection.cursor()
            cur.execute("USE users")
-           sql = "INSERT INTO attendance values(%s,%s,%s)"
-           cur.execute(sql, (row[1], datesql, 1))
+           sql = "INSERT INTO attendance values(%s,%s,%s,%s)"
+           cur.execute(sql, (row[1], datesql, 1,row[3]))
            mysql.connection.commit()
            cur.close()
     return "data added successfully"
