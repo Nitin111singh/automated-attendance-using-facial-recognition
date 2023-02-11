@@ -37,18 +37,47 @@
         background-color: #dddddd;
     }
 
-  .button {
-        background-color: #4CAF50; /* Green */
-        border: none;
+    .welcome {
+  margin-top: 10px;
+  margin-right: 10px;
+  display: inline-block;
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 18px;
+  font-weight: bold;
+  
+}
+      
+    .button-container {
+        display: flex;
+        justify-content: center;
+              
+    }
+    span {
+  width: 500px;
+  
+  
+}
+ .green-button {
+        background-color: green;
         color: white;
-        padding: 15px 32px;
-        text-align: center;
+        border: none;
+        border-radius: 10px;
+        font-size: 18px;
+        font-weight: bold;
+        width: 250px;
+        padding: 10px;
+        margin-top: 30px;
+        margin-bottom: 30px;
+        display: flex;
+        align-items: center;
         text-decoration: none;
-        display: inline-block;
-        font-size: 16px;
-        margin: 4px 2px;
-        cursor: pointer;
-      }
+    }
+
+    .green-button i {
+        margin-right: 10px;
+    }
+
 </style>
 
 
@@ -66,12 +95,18 @@
 </head>
 
 <body>
-    <div style="float: right; margin-top: 10px; margin-right: 10px;">
+    <div class="welcome" style="float: right; margin-top: 10px; margin-right: 10px ;color: #dddddd;">
         <h4>Welcome, {{ username }}</h4>
+        <div style="float: right; margin-right: 10px;">
+            <a href="/logout">
+                <button style="margin-top: 10px;">Logout</button>
+            </a>
+        </div>
     </div>
+   
 
     <div class='mt-3 text-center'>
-        <h1 style="width: auto;margin: auto;color: white;padding: 11px;font-size: 44px;">Face Recognition Based
+        <h1 style="float:auto; margin: auto;color: white;padding: 11px;font-size: 44px;">Face Recognition Based
             Attendance System  </h1>
     </div>
 
@@ -137,7 +172,7 @@
                 <br>
                 <label style="font-size: 20px;"><b>enter email*</b></label>
                 <br>
-                <input type="text" id="newuseremail" name='newuseremail' style="font-size: 20px;margin-top:10px;margin-bottom:10px;"
+                <input type="email" id="newuseremail" name='newuseremail' style="font-size: 20px;margin-top:10px;margin-bottom:10px;"
                     required>
                 <br>
 
@@ -145,30 +180,31 @@
                     New User
                 </button>
                 <br>
-                <h5 style="padding: 25px;"><i>Total Users in Database: {{totalreg}}</i></h5>
             </form>
         </div>
-        <div>
-            <a style="text-decoration: none;max-width: 300px;" href="/saveattendance">
+    <div class="button-container">
+        <span>
+        <a style="text-decoration: none;" href="/saveattendance">
             <button
                 style="font-size: 18px; font-weight: bold; border-radius: 10px; width: 250px; padding: 10px; margin-top: 30px; margin-bottom: 30px; display: flex; align-items: center;"
                 type='submit' class='btn btn-primary'>
                 <i class="fa fa-envelope-o" aria-hidden="true" style="margin-right: 10px;"></i>
                 Save attendance
             </button>
+        </a>
+        </span>
+        <br>
+        <a style="text-decoration: none;" href="/viewattendance">
+            <button
+                style="font-size: 18px; font-weight: bold; border-radius: 10px; width: 250px; padding: 10px; margin-top: 30px; margin-bottom: 30px; display: flex; align-items: center;"
+                type='submit' class='btn btn-primary'>
+                <i class="fa fa-envelope-o" aria-hidden="true" style="margin-right: 10px;"></i>
+                View attendance
+            </button>
+        </a>
+    </div>
+    
 
-            </a>
-            <a style="text-decoration: none;max-width: 300px;" href="/viewattendance">
-                <button
-                    style="font-size: 18px; font-weight: bold; border-radius: 10px; width: 250px; padding: 10px; margin-top: 30px; margin-bottom: 30px; display: flex; align-items: center;"
-                    type='submit' class='btn btn-primary'>
-                    <i class="fa fa-envelope-o" aria-hidden="true" style="margin-right: 10px;"></i>
-                    View attendance 
-                </button>
-            
-            </a>
-           
-        </div>
 
     </div>
 

@@ -13,14 +13,19 @@ import csv
 from flask import flash
 from flask import Flask, redirect, url_for, render_template, request, session
 import sqlite3
+from sklearn import svm
 
-def register_user_to_db(username, password):
+def register_user_to_db(username, password,course):
 
     cur=mysql.connection.cursor()
     cur.execute("USE users")
     sql="INSERT INTO staff(s_name,pass) values (%s,%s)"
     cur.execute(sql, (username,password))
     mysql.connection.commit()
+    sql="INSERT INTO course(s_name,cname) values (%s,%s)"
+    cur.execute(sql, (username,course))
+    mysql.connection.commit()
+
     cur.close() 
 
 def check_user(username, password):
@@ -89,11 +94,12 @@ def extract_faces(img):
 #### Identify face using ML model
 def identify_face(facearray):
     model = joblib.load('static/face_recognition_model.pkl')
-    return model.predict(facearray)
+    return model.predict(facearray.reshape(1, -1))[0]
 
 
 #### A function which trains the model on all the faces available in faces folder
 def train_model():
+    # Load face images and labels
     faces = []
     labels = []
     userlist = os.listdir('static/faces')
@@ -101,12 +107,22 @@ def train_model():
         for imgname in os.listdir(f'static/faces/{user}'):
             img = cv2.imread(f'static/faces/{user}/{imgname}')
             resized_face = cv2.resize(img, (50, 50))
-            faces.append(resized_face.ravel())
+            faces.append(resized_face)
             labels.append(user)
+    
+    # Convert faces and labels to numpy arrays
     faces = np.array(faces)
-    knn = KNeighborsClassifier(n_neighbors=5)
-    knn.fit(faces,labels)
-    joblib.dump(knn,'static/face_recognition_model.pkl')
+    labels = np.array(labels)
+    
+    # Flatten each face image into a 1D vector
+    faces = faces.reshape(len(faces), -1)
+    
+    # Create an SVM model and train it
+    svm_model = svm.SVC(kernel='linear', C=1)
+    svm_model.fit(faces, labels)
+    
+    # Save the model to a file
+    joblib.dump(svm_model, 'static/face_recognition_model.pkl')
 
 
 #### Extract info from today's attendance file in attendance folder
@@ -155,7 +171,7 @@ def add_attendance(name):
 #### Our main page
 
 @app.route('/')
-def index():
+def index():  
     return render_template('login.html')
 
 @app.route('/register', methods=["POST", "GET"])
@@ -163,8 +179,9 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        course =request.form['course']
 
-        register_user_to_db(username, password)
+        register_user_to_db(username, password,course)
         return redirect(url_for('index'))
 
     else:
@@ -188,8 +205,11 @@ def login():
 @app.route('/home', methods=['POST', "GET"])
 def home():
     if 'username' in session:
-        names,rolls,times,cname,l = extract_attendance()    
-        return render_template('home1.html',names=names,rolls=rolls,times=times,l=l,cname=cname,totalreg=totalreg(),username=session['username'],datetoday2=datetoday2) 
+        names,rolls,times,cname,l = extract_attendance()
+        if session['username']=="admin":
+           return  render_template('admin.html',names=names,rolls=rolls,times=times,l=l,cname=cname,totalreg=totalreg(),username=session['username'],datetoday2=datetoday2) 
+        else:
+             return render_template('home1.html',names=names,rolls=rolls,times=times,l=l,cname=cname,totalreg=totalreg(),username=session['username'],datetoday2=datetoday2) 
 
     else:
         return "Username or Password is wrong!"
@@ -204,7 +224,7 @@ def logout():
 def start():
     if 'username' in session:
        if 'face_recognition_model.pkl' not in os.listdir('static'):
-           return render_template('home.html',totalreg=totalreg(),datetoday2=datetoday2,mess='There is no trained model in the static folder. Please add a new face to continue.') 
+           return render_template('home.html',totalreg=totalreg(),datetoday2=datetoday2,mess='There is no trained model in the static folder. Please add a new face to continue.')
    
        cap = cv2.VideoCapture(0)
        ret = True
@@ -214,7 +234,7 @@ def start():
               (x,y,w,h) = extract_faces(frame)[0]
               cv2.rectangle(frame,(x, y), (x+w, y+h), (255, 0, 20), 2)
               face = cv2.resize(frame[y:y+h,x:x+w], (50, 50))
-              identified_person = identify_face(face.reshape(1,-1))[0]
+              identified_person = identify_face(face.reshape(1,-1))
               if identified_person is not None:
                  add_attendance(identified_person)
                  cv2.putText(frame,f'{identified_person}',(30,30),cv2.FONT_HERSHEY_SIMPLEX,1,(255, 0, 20),2,cv2.LINE_AA)
@@ -227,14 +247,15 @@ def start():
                break
        cap.release()
        cv2.destroyAllWindows()
-       names,rolls,times,cname,l = extract_attendance()    
-       return render_template('home1.html',names=names,rolls=rolls,times=times,l=l,cname=cname,totalreg=totalreg(),datetoday2=datetoday2)
+       names,rolls,times,cname,l = extract_attendance()   
+       return render_template('home1.html',names=names,rolls=rolls,times=times,l=l,cname=cname,username=session['username'],totalreg=totalreg(),datetoday2=datetoday2)
     else:
         return "login first" 
 
 @app.route('/addd',methods=['GET','POST'])
 def addd():
     train_model()
+    return "data added"
 #### This function will run when we add a new user
 @app.route('/add',methods=['GET','POST'])
 def add():
@@ -351,6 +372,7 @@ def saveatt():
     print(value)
     with open(f'Attendance/Attendance-{datetoday}{value}.csv', 'r') as file:
         reader = csv.reader(file)
+        
         next(reader)  # skip the header row
         next(reader)
         for row in reader:
