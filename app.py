@@ -94,7 +94,12 @@ def extract_faces(img):
 #### Identify face using ML model
 def identify_face(facearray):
     model = joblib.load('static/face_recognition_model.pkl')
-    return model.predict(facearray.reshape(1, -1))[0]
+    predicted_label = model.predict(facearray.reshape(1, -1))[0]
+    trained_labels = model.classes_
+    if predicted_label in trained_labels:
+        return predicted_label
+    else:
+        return "unknown"
 
 
 #### A function which trains the model on all the faces available in faces folder
@@ -118,7 +123,7 @@ def train_model():
     faces = faces.reshape(len(faces), -1)
     
     # Create an SVM model and train it
-    svm_model = svm.SVC(kernel='linear', C=1)
+    svm_model = svm.SVC(kernel='linear', C=0.01)
     svm_model.fit(faces, labels)
     
     # Save the model to a file
@@ -226,7 +231,7 @@ def start():
        if 'face_recognition_model.pkl' not in os.listdir('static'):
            return render_template('home.html',totalreg=totalreg(),datetoday2=datetoday2,mess='There is no trained model in the static folder. Please add a new face to continue.')
    
-       cap = cv2.VideoCapture(0)
+       cap = cv2.VideoCapture(1)
        ret = True
        while ret:
            ret,frame = cap.read()
@@ -274,20 +279,20 @@ def add():
     userimagefolder = 'static/faces/'+newusername+'_'+str(newuserid)
     if not os.path.isdir(userimagefolder):
         os.makedirs(userimagefolder)
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
     i,j = 0,0
     while 1:
         _,frame = cap.read()
         faces = extract_faces(frame)
         for (x,y,w,h) in faces:
             cv2.rectangle(frame,(x, y), (x+w, y+h), (255, 0, 20), 2)
-            cv2.putText(frame,f'Images Captured: {i}/50',(30,30),cv2.FONT_HERSHEY_SIMPLEX,1,(255, 0, 20),2,cv2.LINE_AA)
+            cv2.putText(frame,f'Images Captured: {i}/200',(30,30),cv2.FONT_HERSHEY_SIMPLEX,1,(255, 0, 20),2,cv2.LINE_AA)
             if j%10==0:
                 name = newusername+'_'+str(i)+'.jpg'
                 cv2.imwrite(userimagefolder+'/'+name,frame[y:y+h,x:x+w])
                 i+=1
             j+=1
-        if j==500:
+        if j==2000:
             break
         cv2.imshow('Adding new User',frame)
         if cv2.waitKey(1)==27:
@@ -296,8 +301,8 @@ def add():
     cv2.destroyAllWindows()
     print('Training Model')
     train_model()
-    names,rolls,times,l = extract_attendance()    
-    return render_template('home.html',names=names,rolls=rolls,times=times,l=l,totalreg=totalreg(),datetoday2=datetoday2) 
+    names,rolls,times,cname,l = extract_attendance()    
+    return render_template('home1.html',names=names,rolls=rolls,times=times,cname=cname,l=l,totalreg=totalreg(),datetoday2=datetoday2) 
 
 @app.route('/database',methods=['GET','POST'])
 def database():
