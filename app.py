@@ -14,6 +14,7 @@ from flask import flash
 from flask import Flask, redirect, url_for, render_template, request, session
 import sqlite3
 from sklearn import svm
+import time
 
 def register_user_to_db(username, password,course):
 
@@ -52,7 +53,7 @@ mysql=MySQL(app)
 app.config['MAIL_SERVER']='smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USERNAME'] = 'nitinsingh.cs20@rvce.edu.in'
-app.config['MAIL_PASSWORD'] = 'asdadasd'
+app.config['MAIL_PASSWORD'] = 'azsxdcfvgbhn123@'
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
 
@@ -219,43 +220,55 @@ def home():
     else:
         return "Username or Password is wrong!"
     
-@app.route('/logout')
+@app.route('/logout', methods=["POST", "GET"])
 def logout():
     session.clear()
     return redirect(url_for('index'))
  
 #### This function will run when we click on Take Attendance Button
+import time
+
 @app.route('/start',methods=['GET'])
 def start():
     if 'username' in session:
-       if 'face_recognition_model.pkl' not in os.listdir('static'):
-           return render_template('home.html',totalreg=totalreg(),datetoday2=datetoday2,mess='There is no trained model in the static folder. Please add a new face to continue.')
+        if 'face_recognition_model.pkl' not in os.listdir('static'):
+            return render_template('home1.html',totalreg=totalreg(),datetoday2=datetoday2,mess='There is no trained model in the static folder. Please add a new face to continue.')
    
-       cap = cv2.VideoCapture(1)
-       ret = True
-       while ret:
-           ret,frame = cap.read()
-           if extract_faces(frame)!=():
-              (x,y,w,h) = extract_faces(frame)[0]
-              cv2.rectangle(frame,(x, y), (x+w, y+h), (255, 0, 20), 2)
-              face = cv2.resize(frame[y:y+h,x:x+w], (50, 50))
-              identified_person = identify_face(face.reshape(1,-1))
-              if identified_person is not None:
-                 add_attendance(identified_person)
-                 cv2.putText(frame,f'{identified_person}',(30,30),cv2.FONT_HERSHEY_SIMPLEX,1,(255, 0, 20),2,cv2.LINE_AA)
-   
-              else:
-                 cv2.putText(frame,f'Unknown',(30,30),cv2.FONT_HERSHEY_SIMPLEX,1,(255, 0, 20),2,cv2.LINE_AA)
-   
-           cv2.imshow('Attendance',frame)
-           if cv2.waitKey(1)==27:
-               break
-       cap.release()
-       cv2.destroyAllWindows()
-       names,rolls,times,cname,l = extract_attendance()   
-       return render_template('home1.html',names=names,rolls=rolls,times=times,l=l,cname=cname,username=session['username'],totalreg=totalreg(),datetoday2=datetoday2)
+        cap = cv2.VideoCapture(1)
+        ret = True
+        attendance_dict = {}
+        while ret:
+            ret, frame = cap.read()
+            if extract_faces(frame) != ():
+                (x, y, w, h) = extract_faces(frame)[0]
+                cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 20), 2)
+                face = cv2.resize(frame[y:y+h,x:x+w], (50, 50))
+                identified_person = identify_face(face.reshape(1,-1))
+                if identified_person is not None:
+                    if identified_person not in attendance_dict:
+                        attendance_dict[identified_person] = time.time()
+                    else:
+                        if time.time() - attendance_dict[identified_person] >= 5:
+                            add_attendance(identified_person)
+                            cv2.putText(frame, f'{identified_person}', (30,30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2, cv2.LINE_AA)
+                            attendance_dict[identified_person] = time.time()
+                        else:
+                            cv2.putText(frame, f'{identified_person}', (30,30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2, cv2.LINE_AA)
+                else:
+                    attendance_dict.clear()
+                    cv2.putText(frame, 'Unknown', (30,30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2, cv2.LINE_AA)
+           
+            cv2.imshow('Attendance',frame)
+            if cv2.waitKey(1)==27:
+                break
+        cap.release()
+        cv2.destroyAllWindows()
+        names, rolls, times, cname, l = extract_attendance()   
+        return render_template('home1.html', names=names, rolls=rolls, times=times, l=l, cname=cname, totalreg=totalreg(), username=session['username'], datetoday2=datetoday2)
     else:
-        return "login first" 
+        return "login first"
+
+
 
 @app.route('/addd',methods=['GET','POST'])
 def addd():
@@ -330,7 +343,7 @@ def sendmail():
        
     for row in records:
         msg = Message("hii",sender='nitinsingh.cs20@rvce.edu.in',recipients=[row[2]])
-        msg.body="aur bhai kya hal hai"
+        msg.body="you are absent today"
         mail.send(msg)
         cur.close() 
     return "email sent success"
@@ -378,8 +391,12 @@ def saveatt():
     with open(f'Attendance/Attendance-{datetoday}{value}.csv', 'r') as file:
         reader = csv.reader(file)
         
-        next(reader)  # skip the header row
-        next(reader)
+        try:
+                next(reader)
+                next(reader)
+        except StopIteration:
+                # Handle case where there are no rows in the file
+            return "No data found in file"
         for row in reader:
         # If the id is found, insert the id, date, and 1 as the present value into the attendance table
            cur = mysql.connection.cursor()

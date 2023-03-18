@@ -120,19 +120,21 @@
 </head>
 
 <body>
-    <div class="welcome" style="float: right; margin-top: 10px; margin-right: 10px ;color: #dddddd;">
-        <h4>Welcome, {{ username }}</h4>
-        <div style="float: right; margin-right: 10px;">
-            <div class="container-login100-form-btn">
-                <div class="wrap-login100-form-btn">
-                    <div class="login100-form-bgbtn"></div>
-                    <button class="login100-form-btn" action="/logout" method="post">
+<div class="welcome" style="float: right; margin-top: 10px; margin-right: 10px ;color: #dddddd;">
+    <h4>Welcome, {{ username }}</h4>
+    <div style="float: right; margin-right: 10px;">
+        <div class="container-login100-form-btn">
+            <div class="wrap-login100-form-btn">
+                <div class="login100-form-bgbtn"></div>
+                <form action="/logout" method="post">
+                    <button class="login100-form-btn" type="submit">
                         Logout
                     </button>
-                </div>
+                </form>
             </div>
         </div>
     </div>
+</div>
    
 
     <div class='mt-3 text-center'>
