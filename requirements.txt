@@ -1,0 +1,5 @@
+pip install opencv-python
+pip install flask
+pip install scikit-learn
+pip install flask-mysqldb
+pip install flask_mail
