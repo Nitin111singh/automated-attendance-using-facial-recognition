@@ -21,3 +21,4 @@
     open browser and type: localhost:5000
 ##
     website is up and running
+##  ![alt text](./static/images/icons/home.png)
