@@ -1,5 +1,7 @@
 # automated-attendance-using-facial-recognition
-# pre-requisite: install python\pip on your machine
+
+### pre-requisite: 
+    *install python\pip on your machine
 # run command on terminal:  pip install requirement.txt
 # download the xampp application for creating mysql database
 # Run the xampp application,start xampp and mysql 
