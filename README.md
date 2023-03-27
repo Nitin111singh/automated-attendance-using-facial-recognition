@@ -14,8 +14,9 @@
     manage the permissions 
 ###
     database is all set up!!
-###
-    run command on terminal: Python app.py 
+    
+### run command on terminal:
+     Python app.py 
 ###
     open browser and type: localhost:5000
 ##
