@@ -23,4 +23,4 @@
     website is up and running
 ##  ![alt text](./static/images/icons/home.png)
 ## send mail funcationlity 
-    ![alt text](./static/images/icons/sendmail.png)   
+## ![alt text](./static/images/icons/sendmail.png)   
