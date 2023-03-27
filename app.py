@@ -234,7 +234,7 @@ def start():
         if 'face_recognition_model.pkl' not in os.listdir('static'):
             return render_template('home1.html',totalreg=totalreg(),datetoday2=datetoday2,mess='There is no trained model in the static folder. Please add a new face to continue.')
    
-        cap = cv2.VideoCapture(1)
+        cap = cv2.VideoCapture(0)
         ret = True
         attendance_dict = {}
         while ret:
@@ -264,7 +264,7 @@ def start():
         cap.release()
         cv2.destroyAllWindows()
         names, rolls, times, cname, l = extract_attendance()   
-        return render_template('home1.html', names=names, rolls=rolls, times=times, l=l, cname=cname, totalreg=totalreg(), username=session['username'], datetoday2=datetoday2)
+        return redirect(url_for('home'))
     else:
         return "login first"
 
@@ -284,15 +284,22 @@ def add():
     #database
     cur=mysql.connection.cursor()
     cur.execute("USE users")
-    sql="INSERT INTO user values(%s,%s,%s)"
-    cur.execute(sql, (newusername, newuserid,newuseremail))
-    mysql.connection.commit()
-    cur.close() 
+    sql_check="SELECT * FROM user WHERE id=%s"
+    cur.execute(sql_check, (newuserid,))
+    result=cur.fetchone()
+    if result:
+        flash("User already exists with this ID")
+        return redirect(url_for('home'))
+    else:
+        sql_insert="INSERT INTO user values (%s,%s,%s)"
+        cur.execute(sql_insert, (newusername, newuserid,newuseremail))
+        mysql.connection.commit()
+        cur.close()
 
     userimagefolder = 'static/faces/'+newusername+'_'+str(newuserid)
     if not os.path.isdir(userimagefolder):
         os.makedirs(userimagefolder)
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
     i,j = 0,0
     while 1:
         _,frame = cap.read()
@@ -396,7 +403,8 @@ def saveatt():
                 next(reader)
         except StopIteration:
                 # Handle case where there are no rows in the file
-            return "No data found in file"
+            "<script>alert('No data found in the file');</script>"
+            return redirect(url_for('home'))
         for row in reader:
         # If the id is found, insert the id, date, and 1 as the present value into the attendance table
            cur = mysql.connection.cursor()
@@ -405,7 +413,7 @@ def saveatt():
            cur.execute(sql, (row[1], datesql, 1,row[3]))
            mysql.connection.commit()
            cur.close()
-    return "data added successfully"
+    return "<script>alert('Data added successfully');</script>"
     
 
 #### Our main function which runs the Flask App
